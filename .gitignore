@@ -6,6 +6,8 @@ dist/
 
 # Documentation files excluded from this demo push
 docs/
+*.md
+*.mdx
 
 # Local environment
 .env
