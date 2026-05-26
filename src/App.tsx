@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { messages as initialMessages, rooms, tasks as initialTasks, users } from "./data/mockData";
+import { calendarEvents, messages as initialMessages, rooms, tasks as initialTasks, users } from "./data/mockData";
 import { DemoGuidePanel, type DemoStepId } from "./components/common/DemoGuidePanel";
 import { ToastMessage } from "./components/common/ToastMessage";
 import { AppHeader } from "./components/layout/AppHeader";
@@ -403,6 +403,7 @@ export function App() {
         <LeftSidebar
           selectedRoomId={selectedRoomId}
           rooms={roomList}
+          messageMap={messageMap}
           searchText={searchText}
           searchResults={searchResults}
           setSearchText={setSearchText}
@@ -414,15 +415,17 @@ export function App() {
         <section className="main-surface">
           {view === "home" && (
             <HomeDashboard
-              taskCount={tasks.length}
-              searchResultCount={searchResults.length}
-              onOpenRoom={() => openRoom("ROOM-001")}
-              onInvite={() => setGuestInviteOpen(true)}
+              currentUser={activeUser}
+              tasks={tasks}
+              calendarEvents={calendarEvents}
+              users={usersList}
               onCalendar={() => setView("calendar")}
               onOrg={() => {
                 setView("org");
                 setRightPanel("org");
               }}
+              onOpenTask={() => handleViewChange("tasks")}
+              onStatus={updateTaskStatus}
             />
           )}
           {view === "chat" && (
