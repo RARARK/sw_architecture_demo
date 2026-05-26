@@ -1,20 +1,21 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
-import { resolve } from "node:path";
 
-export default defineConfig({
-  base: process.env.GITHUB_PAGES === "true" ? "/sw_architecture_demo/" : "/",
-  plugins: [react()],
-  build: {
-    rollupOptions: {
-      input: {
-        main: resolve(__dirname, "index.html"),
-        admin: resolve(__dirname, "admin.html"),
-        guest: resolve(__dirname, "guest.html")
+export default defineConfig(({ mode }) => {
+  return {
+    base: mode === "github-pages" ? "/sw_architecture_demo/" : "/",
+    plugins: [react()],
+    build: {
+      rollupOptions: {
+        input: {
+          main: "index.html",
+          admin: "admin.html",
+          guest: "guest.html"
+        }
       }
+    },
+    server: {
+      port: 5173
     }
-  },
-  server: {
-    port: 5173
-  }
+  };
 });
