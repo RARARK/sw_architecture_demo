@@ -53,6 +53,7 @@ export function App() {
   const [tasks, setTasks] = useState<Task[]>(initialTasks);
   const [contextMessage, setContextMessage] = useState<Message | null>(null);
   const [taskSourceMessage, setTaskSourceMessage] = useState<Message | null>(null);
+  const [taskCreateOpen, setTaskCreateOpen] = useState(false);
   const [splitMessage, setSplitMessage] = useState<Message | null>(null);
   const [searchText, setSearchText] = useState("REST API 설계");
   const [guestInviteOpen, setGuestInviteOpen] = useState(false);
@@ -244,6 +245,43 @@ export function App() {
     setRightPanel("tasks");
     setTaskSourceMessage(null);
     showToast("Task가 할당되었습니다");
+  };
+
+  const openTaskCreate = () => {
+    setTaskForm({
+      title: "",
+      assigneeIds: [activeUser.id],
+      dueDate: new Date(Date.now() + 86400000 * 3).toISOString().split("T")[0],
+      priority: "MEDIUM",
+      description: ""
+    });
+    setTaskCreateOpen(true);
+  };
+
+  const createTask = () => {
+    if (taskForm.assigneeIds.length === 0 || !taskForm.dueDate || !taskForm.title.trim()) {
+      showToast("제목, 담당자 및 마감기한은 필수입니다");
+      return;
+    }
+
+    const nextTask: Task = {
+      id: `TASK-${String(tasks.length + 1).padStart(3, "0")}`,
+      sourceRoomId: selectedRoom.id,
+      title: taskForm.title.trim(),
+      description: taskForm.description,
+      assigneeId: taskForm.assigneeIds[0],
+      assigneeIds: taskForm.assigneeIds,
+      createdBy: activeUser.id,
+      status: "PENDING",
+      priority: taskForm.priority,
+      dueDate: `${taskForm.dueDate}T23:59:59Z`,
+      createdAt: new Date().toISOString()
+    };
+
+    setTasks((current) => [nextTask, ...current]);
+    setRightPanel("tasks");
+    setTaskCreateOpen(false);
+    showToast("작업이 생성되었습니다");
   };
 
   const updateTaskStatus = (taskId: string, status: TaskStatus) => {
@@ -442,7 +480,7 @@ export function App() {
               isExternal={selectedRoom.participants.some((pId) => usersList.find((u) => u.id === pId)?.role === "GUEST")}
             />
           )}
-          {view === "tasks" && <TaskBoard tasks={tasks} onStatus={updateTaskStatus} />}
+          {view === "tasks" && <TaskBoard tasks={tasks} rooms={roomList} onStatus={updateTaskStatus} onCreateTask={openTaskCreate} />}
           {view === "calendar" && <CalendarView tasks={tasks} onSync={() => showToast("일정이 Google Calendar에 추가되었습니다")} showToast={showToast} />}
           {view === "org" && <OrgChart users={usersList} onPersonClick={(user) => setClickedUserForChat(user)} />}
           {view === "settings" && (
@@ -499,6 +537,17 @@ export function App() {
           setForm={setTaskForm}
           onAssign={assignTask}
           onClose={() => setTaskSourceMessage(null)}
+        />
+      )}
+
+      {taskCreateOpen && (
+        <TaskAssignModal
+          form={taskForm}
+          setForm={setTaskForm}
+          onAssign={createTask}
+          onClose={() => setTaskCreateOpen(false)}
+          title="작업 쓰기"
+          submitLabel="생성"
         />
       )}
 

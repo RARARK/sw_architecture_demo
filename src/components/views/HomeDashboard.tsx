@@ -1,34 +1,19 @@
-import { Bell, CalendarDays, ClipboardList, PlusCircle, Users } from "lucide-react";
+import { CalendarDays, ClipboardList, Users } from "lucide-react";
 import { useRef, useState } from "react";
 import type { CalendarEvent, Task, TaskStatus, User } from "../../types";
 import { taskStatusLabel } from "../../utils/demo";
 
 const DAYS_KO = ["일요일", "월요일", "화요일", "수요일", "목요일", "금요일", "토요일"];
-
-const PRIORITY_CONFIG: Record<string, { label: string; icon: string; cls: string }> = {
-  HIGH:   { label: "높음", icon: "↑", cls: "tl-priority-high" },
-  MEDIUM: { label: "중간", icon: "–", cls: "tl-priority-medium" },
-  LOW:    { label: "낮음", icon: "↓", cls: "tl-priority-low" },
-};
-const BORDER_COLOR: Record<string, string> = {
-  HIGH: "#ef4444", MEDIUM: "#f59e0b", LOW: "#22c55e",
-};
 const STATUS_ORDER: TaskStatus[] = ["PENDING", "IN_PROGRESS", "DONE", "HOLD"];
 
 function todayLabel() {
   const d = new Date();
   return `${d.getMonth() + 1}월 ${d.getDate()}일 (${DAYS_KO[d.getDay()]})`;
 }
+
 function formatDue(iso: string) {
   const d = new Date(iso);
   return `${String(d.getMonth() + 1).padStart(2, "0")}.${String(d.getDate()).padStart(2, "0")} 마감`;
-}
-function dueParts(iso: string) {
-  const d = new Date(iso);
-  return {
-    month: `${String(d.getMonth() + 1).padStart(2, "0")}월`,
-    day: String(d.getDate()).padStart(2, "0")
-  };
 }
 
 export function HomeDashboard({
@@ -74,10 +59,6 @@ export function HomeDashboard({
           <div className="wg-profile-date">
             <CalendarDays size={14} />
             {todayLabel()}
-          </div>
-          <div className="wg-profile-actions">
-            <button className="wg-profile-btn"><PlusCircle size={15} /> 상태 설정</button>
-            <button className="wg-profile-btn"><Bell size={15} /> 알림 일시 정지</button>
           </div>
         </article>
 
@@ -148,32 +129,20 @@ export function HomeDashboard({
         ) : (
           <div className="wg-task-list">
             {tasks.map((task) => {
-              const pCfg = PRIORITY_CONFIG[task.priority] ?? PRIORITY_CONFIG.MEDIUM;
-              const border = BORDER_COLOR[task.priority] ?? "#6366f1";
-              const due = dueParts(task.dueDate);
               const assigneeNames = (task.assigneeIds ?? [task.assigneeId ?? ""])
                 .map((id) => users.find((user) => user.id === id)?.name)
                 .filter(Boolean)
                 .join(", ");
               return (
-                <div key={task.id} className="wg-task-row" style={{ borderLeftColor: border }}>
-                  <div className="wg-task-date" aria-label={formatDue(task.dueDate)}>
-                    <span>{due.month}</span>
-                    <strong>{due.day}</strong>
-                  </div>
-                  <div className="wg-task-branch" aria-hidden="true">
-                    <span style={{ backgroundColor: border }} />
-                  </div>
-                  <div className="wg-task-body">
-                    <div className="wg-task-meta">
-                      <span className={`tl-priority-badge ${pCfg.cls}`}>
-                        <span className="tl-priority-icon">{pCfg.icon}</span>{pCfg.label}
-                      </span>
-                      <span className="wg-task-assignee">{assigneeNames || "담당자 미정"}</span>
+                <div key={task.id} className="wg-task-row">
+                  <StatusDot taskId={task.id} current={task.status} onStatus={onStatus} />
+                  <div className="wg-task-info">
+                    <div className="wg-task-title-row">
+                      <span className="wg-task-row-title">{task.title}</span>
+                      <span className="wg-task-due">{formatDue(task.dueDate)}</span>
                     </div>
-                    <span className="wg-task-row-title">{task.title}</span>
+                    <span className="wg-task-assignee">{assigneeNames || "담당자 미정"}</span>
                   </div>
-                  <StatusMenu taskId={task.id} current={task.status} onStatus={onStatus} />
                 </div>
               );
             })}
@@ -184,23 +153,21 @@ export function HomeDashboard({
   );
 }
 
-/* ── Status Menu ── */
-function StatusMenu({ taskId, current, onStatus }: {
+/* ── Status Dot ── */
+function StatusDot({ taskId, current, onStatus }: {
   taskId: string; current: TaskStatus; onStatus: (id: string, s: TaskStatus) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  const ref = useRef<HTMLSpanElement>(null);
   return (
-    <div className="tl-status-wrap" ref={ref}>
+    <span className="wg-task-dot-wrap" ref={ref}>
       <button
-        className={`tl-status-badge tl-status-${current.toLowerCase()}`}
+        className={`wg-task-status-dot wg-dot-${current.toLowerCase()}`}
         onClick={() => setOpen((v) => !v)}
-      >
-        <span className="tl-status-icon" />
-        {taskStatusLabel[current]}
-      </button>
+        title={taskStatusLabel[current]}
+      />
       {open && (
-        <div className="tl-status-menu">
+        <div className="tl-status-menu wg-dot-menu">
           {STATUS_ORDER.map((s) => (
             <button
               key={s}
@@ -212,6 +179,6 @@ function StatusMenu({ taskId, current, onStatus }: {
           ))}
         </div>
       )}
-    </div>
+    </span>
   );
 }

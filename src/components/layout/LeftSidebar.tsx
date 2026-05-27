@@ -120,15 +120,17 @@ export function LeftSidebar({
                     <span className="sidebar-room-time">{formatTime(lastMsg.timestamp)}</span>
                   )}
                 </div>
-                {lastMsg && lastSender && (
-                  <span className="sidebar-room-preview">
-                    {lastSender.name}: {lastMsg.content}
-                  </span>
-                )}
+                <div className="sidebar-room-bottom">
+                  {lastMsg && lastSender && (
+                    <span className="sidebar-room-preview">
+                      {lastSender.name}: {lastMsg.content}
+                    </span>
+                  )}
+                  {room.unreadCount > 0 && (
+                    <span className="sidebar-unread">{room.unreadCount}</span>
+                  )}
+                </div>
               </div>
-              {room.unreadCount > 0 && (
-                <span className="sidebar-unread">{room.unreadCount}</span>
-              )}
             </button>
           );
         })}

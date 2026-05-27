@@ -8,24 +8,28 @@ export function TaskAssignModal({
   form,
   setForm,
   onAssign,
-  onClose
+  onClose,
+  title = "Task로 할당",
+  submitLabel = "할당"
 }: {
-  message: Message;
+  message?: Message;
   form: TaskForm;
   setForm: (form: TaskForm) => void;
   onAssign: () => void;
   onClose: () => void;
+  title?: string;
+  submitLabel?: string;
 }) {
   return (
     <div className="modal-backdrop">
-      <section className="modal" aria-label="Task 할당">
+      <section className="modal" aria-label={title}>
         <div className="modal-head">
-          <h2>Task로 할당</h2>
+          <h2>{title}</h2>
           <button className="icon-button" onClick={onClose} title="닫기">
             <X size={18} aria-hidden />
           </button>
         </div>
-        <blockquote>{message.content}</blockquote>
+        {message && <blockquote>{message.content}</blockquote>}
         <label>
           작업 제목
           <input
@@ -104,7 +108,7 @@ export function TaskAssignModal({
         </label>
         <div className="modal-actions">
           <button className="secondary-action" onClick={onClose}>취소</button>
-          <button className="primary-action" onClick={onAssign}>할당</button>
+          <button className="primary-action" onClick={onAssign}>{submitLabel}</button>
         </div>
       </section>
     </div>
