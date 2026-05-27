@@ -315,5 +315,53 @@ export const calendarEvents: CalendarEvent[] = [
     attendees: ["USER-001", "USER-002", "USER-004"],
     googleEventId: "gcal_mock_20260524_1000",
     description: "스프린트 목표와 API 설계 후속 작업을 정리합니다."
+  },
+  {
+    id: "EVT-002",
+    title: "유튜브 광고 소재 1차 리뷰",
+    startsAt: "2026-05-23T14:00:00",
+    endsAt: "2026-05-23T15:00:00",
+    attendees: ["USER-001", "USER-003"],
+    linkedTaskId: "TASK-001",
+    googleEventId: "gcal_mock_20260523_1400",
+    description: "TASK-001 산출물 초안을 확인하고 15초 버전 수정 범위를 확정합니다."
+  },
+  {
+    id: "EVT-003",
+    title: "SNS 콘텐츠 기획안 공유",
+    startsAt: "2026-05-25T09:30:00",
+    endsAt: "2026-05-25T10:30:00",
+    attendees: ["USER-001", "USER-002"],
+    linkedTaskId: "TASK-002",
+    googleEventId: "gcal_mock_20260525_0930",
+    description: "채널별 콘텐츠 방향과 게시 일정을 점검합니다."
+  },
+  {
+    id: "EVT-004",
+    title: "클라이언트 피드백 정리",
+    startsAt: "2026-05-30T16:00:00",
+    endsAt: "2026-05-30T17:00:00",
+    attendees: ["USER-001", "USER-004"],
+    linkedTaskId: "TASK-003",
+    googleEventId: "gcal_mock_20260530_1600",
+    description: "외부 피드백을 우선순위별로 분류하고 후속 액션을 정리합니다."
+  },
+  {
+    id: "EVT-005",
+    title: "REST API 설계 리뷰",
+    startsAt: "2026-05-21T11:00:00",
+    endsAt: "2026-05-21T12:00:00",
+    attendees: ["USER-001", "USER-002"],
+    googleEventId: "gcal_mock_20260521_1100",
+    description: "검색 결과 Split-View와 메시지 기반 Task 생성 API 흐름을 검토합니다."
+  },
+  {
+    id: "EVT-006",
+    title: "게스트 초대 플로우 점검",
+    startsAt: "2026-05-22T15:00:00",
+    endsAt: "2026-05-22T15:40:00",
+    attendees: ["USER-001", "GUEST-001"],
+    googleEventId: "gcal_mock_20260522_1500",
+    description: "게스트 접근 권한, 만료 시간, 외부 채널 표시 정책을 확인합니다."
   }
 ];

@@ -1,8 +1,7 @@
-import { CheckCircle, ChevronLeft, ChevronRight, PanelRightOpen, Plus, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { calendarEvents as initialEvents } from "../../data/mockData";
 import type { CalendarEvent, Task } from "../../types";
-import { currentUser } from "../../utils/demo";
 
 /* ── Constants ── */
 const WEEK_DAYS = ["일", "월", "화", "수", "목", "금", "토"];
@@ -21,6 +20,7 @@ function toKey(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 function isoToKey(iso: string): string { return iso.substring(0, 10); }
+function toDateTimeInput(iso: string): string { return iso.substring(0, 16); }
 
 /* ── New Event Modal ── */
 function NewEventModal({
@@ -92,6 +92,85 @@ function NewEventModal({
   );
 }
 
+function EventDetailModal({
+  event,
+  onClose,
+  onSave,
+  onDelete,
+}: {
+  event: CalendarEvent;
+  onClose: () => void;
+  onSave: (event: CalendarEvent) => void;
+  onDelete: (eventId: string) => void;
+}) {
+  const [title, setTitle] = useState(event.title);
+  const [startsAt, setStartsAt] = useState(toDateTimeInput(event.startsAt));
+  const [endsAt, setEndsAt] = useState(toDateTimeInput(event.endsAt));
+  const [attendees, setAttendees] = useState(event.attendees.join(", "));
+  const [description, setDescription] = useState(event.description ?? "");
+
+  return (
+    <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <section className="modal cal-modal" aria-label="일정 상세">
+        <div className="modal-head">
+          <h2>일정 상세</h2>
+          <button className="icon-button" onClick={onClose} title="닫기">
+            <X size={18} />
+          </button>
+        </div>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (!title.trim()) return;
+            onSave({
+              ...event,
+              title: title.trim(),
+              startsAt,
+              endsAt,
+              attendees: attendees
+                .split(",")
+                .map((item) => item.trim())
+                .filter(Boolean),
+              description,
+            });
+          }}
+          style={{ display: "grid", gap: 14 }}
+        >
+          <label>
+            제목
+            <input value={title} onChange={(e) => setTitle(e.target.value)} required autoFocus />
+          </label>
+          <div className="field-grid">
+            <label>
+              시작
+              <input type="datetime-local" value={startsAt} onChange={(e) => setStartsAt(e.target.value)} required />
+            </label>
+            <label>
+              종료
+              <input type="datetime-local" value={endsAt} onChange={(e) => setEndsAt(e.target.value)} required />
+            </label>
+          </div>
+          <label>
+            참석자
+            <input value={attendees} onChange={(e) => setAttendees(e.target.value)} placeholder="쉼표로 구분" />
+          </label>
+          <label>
+            설명
+            <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} />
+          </label>
+          <div className="modal-actions split">
+            <button type="button" className="secondary-action danger" onClick={() => onDelete(event.id)}>삭제</button>
+            <div className="modal-action-group">
+              <button type="button" className="secondary-action" onClick={onClose}>취소</button>
+              <button type="submit" className="primary-action">수정 저장</button>
+            </div>
+          </div>
+        </form>
+      </section>
+    </div>
+  );
+}
+
 /* ── CalendarView ── */
 export function CalendarView({
   tasks = [],
@@ -110,25 +189,9 @@ export function CalendarView({
   const [viewMode, setViewMode] = useState<ViewMode>("month");
   const [localEvents, setLocalEvents] = useState<CalendarEvent[]>(initialEvents);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [modalOpen,    setModalOpen]    = useState(false);
-
-  /* ── 동기화 상태 ── */
-  const todaySyncKey = toKey(today);
-  const [convertedTasks, setConvertedTasks] = useState<Record<string, string>>({});
-  const [selectedTask,   setSelectedTask]   = useState<Task | null>(null);
-  const [conversionOpen, setConversionOpen] = useState(false);
-
-  const myTasks       = tasks.filter((t) =>
-    t.assigneeIds ? t.assigneeIds.includes(currentUser.id) : t.assigneeId === currentUser.id
-  );
-  const pendingTasks   = myTasks.filter((t) => !convertedTasks[t.id]);
-  const completedTasks = myTasks.filter((t) => convertedTasks[t.id] === todaySyncKey);
-
-  function handleConvertTask(taskId: string) {
-    setConvertedTasks((prev) => ({ ...prev, [taskId]: todaySyncKey }));
-    showToast("일정 동기화 완료");
-    setConversionOpen(false);
-  }
+  const selectedEvent = localEvents.find((event) => event.id === selectedEventId) ?? null;
 
   /* Navigation */
   function prev() {
@@ -172,6 +235,7 @@ export function CalendarView({
   /* Map events + task-due-dates to date keys */
   const itemsByDate = useMemo(() => {
     const map: Record<string, { id: string; title: string; color: string; type: "event" | "task" }[]> = {};
+    const linkedTaskIds = new Set(localEvents.map((event) => event.linkedTaskId).filter(Boolean));
 
     function add(key: string, item: { id: string; title: string; color: string; type: "event" | "task" }) {
       if (!map[key]) map[key] = [];
@@ -182,7 +246,7 @@ export function CalendarView({
       add(isoToKey(ev.startsAt), { id: ev.id, title: ev.title, color: "#4f7aff", type: "event" });
     }
     for (const task of tasks) {
-      if (task.dueDate) {
+      if (task.dueDate && !linkedTaskIds.has(task.id)) {
         add(isoToKey(task.dueDate), {
           id: task.id,
           title: task.title,
@@ -199,6 +263,10 @@ export function CalendarView({
     setModalOpen(true);
   }
 
+  function openEvent(eventId: string) {
+    setSelectedEventId(eventId);
+  }
+
   function handleCreate(title: string, startsAt: string, endsAt: string, description: string) {
     setLocalEvents((prev) => [
       ...prev,
@@ -206,6 +274,18 @@ export function CalendarView({
     ]);
     showToast("일정이 추가되었습니다");
     setModalOpen(false);
+  }
+
+  function handleUpdateEvent(nextEvent: CalendarEvent) {
+    setLocalEvents((prev) => prev.map((event) => (event.id === nextEvent.id ? nextEvent : event)));
+    showToast("일정이 수정되었습니다");
+    setSelectedEventId(null);
+  }
+
+  function handleDeleteEvent(eventId: string) {
+    setLocalEvents((prev) => prev.filter((event) => event.id !== eventId));
+    showToast("일정이 삭제되었습니다");
+    setSelectedEventId(null);
   }
 
   /* ── Render helpers ── */
@@ -240,7 +320,10 @@ export function CalendarView({
               key={it.id}
               className="cal-chip"
               style={{ background: `${it.color}1a`, color: it.color, borderLeft: `2px solid ${it.color}` }}
-              onClick={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (it.type === "event") openEvent(it.id);
+              }}
               title={it.title}
             >
               {it.title}
@@ -339,7 +422,10 @@ export function CalendarView({
                       key={it.id}
                       className="cal-week-event"
                       style={{ background: `${it.color}22`, color: it.color, borderLeft: `3px solid ${it.color}` }}
-                      onClick={(e) => e.stopPropagation()}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (it.type === "event") openEvent(it.id);
+                      }}
                     >
                       {it.title}
                     </div>
@@ -351,61 +437,6 @@ export function CalendarView({
         </div>
       )}
 
-      {/* ── 일정 동기화 목록 (대기) ── */}
-      <div className="cal-sync-section">
-        <div className="cal-sync-head">
-          <h3 className="cal-sync-title">일정 동기화 목록 (대기)</h3>
-          <span className="cal-sync-badge pending">{pendingTasks.length}건</span>
-        </div>
-        {pendingTasks.length === 0 ? (
-          <p className="cal-sync-empty">할당된 대기 작업이 없습니다.</p>
-        ) : (
-          <div className="cal-sync-list">
-            {pendingTasks.map((task) => (
-              <article key={task.id} className="cal-sync-row">
-                <div className="cal-sync-row-body">
-                  <span className="cal-sync-row-title">{task.title}</span>
-                  <span className="cal-sync-row-meta">마감일: {new Date(task.dueDate).toLocaleDateString("ko-KR")}</span>
-                </div>
-                <button
-                  className="cal-sync-row-btn"
-                  onClick={() => { setSelectedTask(task); setConversionOpen(true); }}
-                >
-                  <PanelRightOpen size={14} />
-                  일정 동기화
-                </button>
-              </article>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* ── 오늘 동기화 완료 목록 ── */}
-      <div className="cal-sync-section">
-        <div className="cal-sync-head">
-          <h3 className="cal-sync-title">오늘 동기화 완료 목록</h3>
-          <span className="cal-sync-badge done">{completedTasks.length}건</span>
-        </div>
-        <p className="cal-sync-sub">오늘({todaySyncKey}) 일정 동기화를 완료한 작업만 표시됩니다.</p>
-        {completedTasks.length === 0 ? (
-          <p className="cal-sync-empty">오늘 동기화를 완료한 작업이 없습니다.</p>
-        ) : (
-          <div className="cal-sync-list">
-            {completedTasks.map((task) => (
-              <article key={task.id} className="cal-sync-row done">
-                <div className="cal-sync-row-body">
-                  <span className="cal-sync-row-title done">{task.title}</span>
-                  <span className="cal-sync-row-meta done">
-                    <CheckCircle size={13} /> 오늘 일정 동기화 완료
-                  </span>
-                </div>
-                <span className="cal-sync-done-badge">동기화 완료</span>
-              </article>
-            ))}
-          </div>
-        )}
-      </div>
-
       {/* ── New event modal ── */}
       {modalOpen && selectedDate && (
         <NewEventModal
@@ -415,12 +446,12 @@ export function CalendarView({
         />
       )}
 
-      {/* ── Task conversion modal ── */}
-      {conversionOpen && selectedTask && (
-        <TaskConversionModal
-          task={selectedTask}
-          onClose={() => setConversionOpen(false)}
-          onConvert={() => handleConvertTask(selectedTask.id)}
+      {selectedEvent && (
+        <EventDetailModal
+          event={selectedEvent}
+          onClose={() => setSelectedEventId(null)}
+          onSave={handleUpdateEvent}
+          onDelete={handleDeleteEvent}
         />
       )}
     </div>
@@ -428,7 +459,7 @@ export function CalendarView({
 }
 
 /* ── Task Conversion Modal ── */
-function TaskConversionModal({
+export function TaskConversionModal({
   task,
   onClose,
   onConvert,

@@ -1,4 +1,4 @@
-import { MoreHorizontal, Plus, Search } from "lucide-react";
+import { CalendarPlus, MoreHorizontal, Plus, Search, Trash2 } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import type { Room, Task, TaskStatus } from "../../types";
 import { userById } from "../../utils/demo";
@@ -57,7 +57,7 @@ function StatusBadge({ taskId, current, onStatus }: {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   return (
-    <div className="tl-status-wrap" ref={ref}>
+    <div className={`tl-status-wrap ${open ? "is-open" : ""}`} ref={ref}>
       <button className={`tb-badge ${STATUS_CLS[current]}`} onClick={() => setOpen((v) => !v)}>
         {STATUS_LABEL[current]}
       </button>
@@ -76,11 +76,13 @@ function StatusBadge({ taskId, current, onStatus }: {
 }
 
 /* ── TaskBoard ── */
-export function TaskBoard({ tasks, rooms, onStatus, onCreateTask }: {
+export function TaskBoard({ tasks, rooms, onStatus, onCreateTask, onDeleteTask, onSyncTask }: {
   tasks: Task[];
   rooms: Room[];
   onStatus: (taskId: string, status: TaskStatus) => void;
   onCreateTask: () => void;
+  onDeleteTask: (taskId: string) => void;
+  onSyncTask: (taskId: string) => void;
 }) {
   const [search,       setSearch]       = useState("");
   const [statusFilter, setStatusFilter] = useState<TaskStatus | "ALL">("ALL");
@@ -90,6 +92,7 @@ export function TaskBoard({ tasks, rooms, onStatus, onCreateTask }: {
   const PAGE_SIZE = 10;
 
   const [starred, setStarred] = useState<Set<string>>(new Set());
+  const [openActionTaskId, setOpenActionTaskId] = useState<string | null>(null);
 
   const roomById = useMemo(() => {
     const m: Record<string, string> = {};
@@ -226,7 +229,7 @@ export function TaskBoard({ tasks, rooms, onStatus, onCreateTask }: {
             const roomName   = task.sourceRoomId ? roomById[task.sourceRoomId] : null;
 
             return (
-              <div key={task.id} className="tb-row">
+              <div key={task.id} className={`tb-row ${openActionTaskId === task.id ? "menu-open" : ""}`}>
                 <span className="tbc-check"><input type="checkbox" className="tb-checkbox" /></span>
                 <span className="tbc-star">
                   <button className={`tb-star ${isStarred ? "on" : ""}`}
@@ -257,8 +260,49 @@ export function TaskBoard({ tasks, rooms, onStatus, onCreateTask }: {
                 </div>
                 <span className={`tbc-due ${due?.urgent ? "urgent" : ""}`}>{due ? due.text : "—"}</span>
                 <span className="tbc-created">{fmtCreated(task.createdAt)}</span>
-                <span className="tbc-more">
-                  <button className="tb-more-btn" aria-label="더보기"><MoreHorizontal size={16} /></button>
+                <span
+                  className="tbc-more"
+                  onBlur={(event) => {
+                    if (!event.currentTarget.contains(event.relatedTarget)) {
+                      setOpenActionTaskId(null);
+                    }
+                  }}
+                >
+                  <button
+                    className="tb-more-btn"
+                    aria-label="더보기"
+                    aria-expanded={openActionTaskId === task.id}
+                    onClick={() => setOpenActionTaskId((current) => (current === task.id ? null : task.id))}
+                  >
+                    <MoreHorizontal size={16} />
+                  </button>
+                  {openActionTaskId === task.id && (
+                    <div className="tb-action-menu" role="menu">
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => {
+                          onSyncTask(task.id);
+                          setOpenActionTaskId(null);
+                        }}
+                      >
+                        <CalendarPlus size={15} />
+                        일정 동기화
+                      </button>
+                      <button
+                        type="button"
+                        role="menuitem"
+                        className="danger"
+                        onClick={() => {
+                          onDeleteTask(task.id);
+                          setOpenActionTaskId(null);
+                        }}
+                      >
+                        <Trash2 size={15} />
+                        삭제
+                      </button>
+                    </div>
+                  )}
                 </span>
               </div>
             );

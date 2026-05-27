@@ -12,7 +12,7 @@ import { DirectChatCreateModal } from "./components/modals/DirectChatCreateModal
 import { MyPageModal } from "./components/modals/MyPageModal";
 import { ContextMenu } from "./components/overlays/ContextMenu";
 import { SplitView } from "./components/overlays/SplitView";
-import { CalendarView } from "./components/views/CalendarView";
+import { CalendarView, TaskConversionModal } from "./components/views/CalendarView";
 import { ChatView } from "./components/views/ChatView";
 import { HomeDashboard } from "./components/views/HomeDashboard";
 import { LoginView } from "./components/views/LoginView";
@@ -54,6 +54,7 @@ export function App() {
   const [contextMessage, setContextMessage] = useState<Message | null>(null);
   const [taskSourceMessage, setTaskSourceMessage] = useState<Message | null>(null);
   const [taskCreateOpen, setTaskCreateOpen] = useState(false);
+  const [calendarSyncTask, setCalendarSyncTask] = useState<Task | null>(null);
   const [splitMessage, setSplitMessage] = useState<Message | null>(null);
   const [searchText, setSearchText] = useState("REST API 설계");
   const [guestInviteOpen, setGuestInviteOpen] = useState(false);
@@ -291,6 +292,29 @@ export function App() {
     showToast(`작업 상태가 ${taskStatusLabel[status]}(으)로 변경되었습니다`);
   };
 
+  const deleteTask = (taskId: string) => {
+    setTasks((current) => current.filter((task) => task.id !== taskId));
+    setMessageMap((current) => {
+      const next = { ...current };
+      Object.keys(next).forEach((roomId) => {
+        next[roomId] = next[roomId].map((message) =>
+          message.linkedTaskId === taskId ? { ...message, linkedTaskId: undefined } : message
+        );
+      });
+      return next;
+    });
+    showToast("작업이 삭제되었습니다");
+  };
+
+  const syncTaskToCalendar = (taskId: string) => {
+    const task = tasks.find((item) => item.id === taskId);
+    if (!task) {
+      showToast("동기화할 작업을 찾을 수 없습니다");
+      return;
+    }
+    setCalendarSyncTask(task);
+  };
+
   const createDirectRoom = (name: string, type: RoomType, inviteeIds: string[] = []) => {
     if (!clickedUserForChat) return;
 
@@ -480,7 +504,16 @@ export function App() {
               isExternal={selectedRoom.participants.some((pId) => usersList.find((u) => u.id === pId)?.role === "GUEST")}
             />
           )}
-          {view === "tasks" && <TaskBoard tasks={tasks} rooms={roomList} onStatus={updateTaskStatus} onCreateTask={openTaskCreate} />}
+          {view === "tasks" && (
+            <TaskBoard
+              tasks={tasks}
+              rooms={roomList}
+              onStatus={updateTaskStatus}
+              onCreateTask={openTaskCreate}
+              onDeleteTask={deleteTask}
+              onSyncTask={syncTaskToCalendar}
+            />
+          )}
           {view === "calendar" && <CalendarView tasks={tasks} onSync={() => showToast("일정이 Google Calendar에 추가되었습니다")} showToast={showToast} />}
           {view === "org" && <OrgChart users={usersList} onPersonClick={(user) => setClickedUserForChat(user)} />}
           {view === "settings" && (
@@ -548,6 +581,17 @@ export function App() {
           onClose={() => setTaskCreateOpen(false)}
           title="작업 쓰기"
           submitLabel="생성"
+        />
+      )}
+
+      {calendarSyncTask && (
+        <TaskConversionModal
+          task={calendarSyncTask}
+          onClose={() => setCalendarSyncTask(null)}
+          onConvert={() => {
+            showToast("일정 동기화 완료");
+            setCalendarSyncTask(null);
+          }}
         />
       )}
 
